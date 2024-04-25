@@ -1,11 +1,12 @@
-"use client";
-
+import { Suspense } from "react";
 import Editor from "@/components/editor";
 
 export default function Home() {
   return (
     <main className="container mx-auto mt-4">
-      <Editor />
+      <Suspense>
+        <Editor />
+      </Suspense>
     </main>
   );
 }
