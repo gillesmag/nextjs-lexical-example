@@ -1,3 +1,5 @@
+"use client";
+
 import { CollaborationPlugin } from "@lexical/react/LexicalCollaborationPlugin";
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
@@ -6,6 +8,7 @@ import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { HeadingNode } from "@lexical/rich-text";
 import { Provider } from "@lexical/yjs";
 import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { WebsocketProvider } from "y-websocket";
 import { Doc } from "yjs";
 
@@ -24,7 +27,16 @@ function onError(error: Error): void {
 const WEBSOCKET_ENDPOINT = "ws://localhost:2345";
 const WEBSOCKET_SLUG = "playground";
 
+function useCollab() {
+  // Don't attempt to initialize collab in SSR
+  const [collab, setCollab] = useState(false);
+  useEffect(() => setCollab(true), []);
+  return collab;
+}
+
 export default function Editor() {
+  const collab = useCollab();
+
   const initialConfig = {
     editorState: null,
     namespace: "MyEditor",
@@ -39,41 +51,43 @@ export default function Editor() {
   return (
     <LexicalComposer initialConfig={initialConfig}>
       <div className="relative border-2 rounded p-2 border-slate-500">
-        <CollaborationPlugin
-          id="main"
-          providerFactory={(id, yjsDocMap) => {
-            let doc = yjsDocMap.get(id);
+        {collab && (
+          <CollaborationPlugin
+            id="main"
+            providerFactory={(id, yjsDocMap) => {
+              let doc = yjsDocMap.get(id);
 
-            if (doc === undefined) {
-              doc = new Doc();
-              yjsDocMap.set(id, doc);
-            } else {
-              doc.load();
-            }
-
-            console.log(
-              "Connecting to",
-              WEBSOCKET_ENDPOINT +
-                "/" +
-                WEBSOCKET_SLUG +
-                "/" +
-                WEBSOCKET_ID +
-                "/" +
-                id
-            );
-
-            // @ts-expect-error
-            return new WebsocketProvider(
-              WEBSOCKET_ENDPOINT,
-              WEBSOCKET_SLUG + "/" + WEBSOCKET_ID + "/" + id,
-              doc,
-              {
-                connect: false,
+              if (doc === undefined) {
+                doc = new Doc();
+                yjsDocMap.set(id, doc);
+              } else {
+                doc.load();
               }
-            ) as Provider;
-          }}
-          shouldBootstrap={true}
-        />
+
+              console.log(
+                "Connecting to",
+                WEBSOCKET_ENDPOINT +
+                  "/" +
+                  WEBSOCKET_SLUG +
+                  "/" +
+                  WEBSOCKET_ID +
+                  "/" +
+                  id
+              );
+
+              // @ts-expect-error
+              return new WebsocketProvider(
+                WEBSOCKET_ENDPOINT,
+                WEBSOCKET_SLUG + "/" + WEBSOCKET_ID + "/" + id,
+                doc,
+                {
+                  connect: false,
+                }
+              ) as Provider;
+            }}
+            shouldBootstrap={true}
+          />
+        )}
         <RichTextPlugin
           contentEditable={<ContentEditable />}
           placeholder={<></>}
